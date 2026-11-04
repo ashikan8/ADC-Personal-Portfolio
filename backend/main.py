@@ -54,3 +54,15 @@ def delete_contact(contact_id: int):
         detail="Contact not found"
     )
 
+
+
+# Endpoint 4: Update an existing contact message
+@app.put("/contacts/{contact_id}")
+def update_contact(contact_id: int, submission: ContactSubmission):
+    for index, contact in enumerate(contacts):
+        if contact.id == contact_id:
+            updated_contact = Contact(id=contact_id, **submission.model_dump())
+            contacts[index] = updated_contact
+            return updated_contact
+
+    raise HTTPException(status_code=404, detail="Contact not found")
