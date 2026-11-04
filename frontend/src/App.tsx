@@ -20,6 +20,8 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<ContactInput>({ name: '', email: '', message: '' });
 
   // GET: load messages from the FastAPI backend, not a hardcoded array.
   useEffect(() => {
@@ -59,6 +61,30 @@ function App() {
       setError('Could not send your message. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // PUT: update an existing message through FastAPI.
+  async function saveEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingId === null) return;
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch(`/contacts/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (!response.ok) throw new Error('Could not update the message.');
+      const updated: Contact = await response.json();
+      setContacts((previous) => previous.map((contact) =>
+        contact.id === editingId ? updated : contact
+      ));
+      setEditingId(null);
+      setSuccess('Message updated.');
+    } catch {
+      setError('Could not update the message. Please try again.');
     }
   }
 
@@ -237,11 +263,35 @@ function App() {
             <ul className="contact-list">
               {contacts.map((contact) => (
                 <li key={contact.id} className="contact-item">
-                  <strong>{contact.name}</strong> <span>({contact.email})</span>
-                  <p>{contact.message}</p>
-                  <button type="button" onClick={() => void deleteContact(contact.id)}>
-                    Delete
-                  </button>
+                  {editingId === contact.id ? (
+                    <form className="contact-form edit-form" onSubmit={(event) => void saveEdit(event)}>
+                      <label htmlFor={`edit-name-${contact.id}`}>Name</label>
+                      <input id={`edit-name-${contact.id}`} value={editForm.name} required
+                        onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} />
+                      <label htmlFor={`edit-email-${contact.id}`}>Email</label>
+                      <input id={`edit-email-${contact.id}`} type="email" value={editForm.email} required
+                        onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
+                      <label htmlFor={`edit-message-${contact.id}`}>Message</label>
+                      <textarea id={`edit-message-${contact.id}`} required value={editForm.message}
+                        onChange={(event) => setEditForm({ ...editForm, message: event.target.value })} />
+                      <div className="contact-actions">
+                        <button type="submit">Save Changes</button>
+                        <button type="button" onClick={() => setEditingId(null)}>Cancel</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <strong>{contact.name}</strong> <span>({contact.email})</span>
+                      <p>{contact.message}</p>
+                      <div className="contact-actions">
+                        <button type="button" onClick={() => {
+                          setEditingId(contact.id);
+                          setEditForm({ name: contact.name, email: contact.email, message: contact.message });
+                        }}>Edit</button>
+                        <button type="button" onClick={() => void deleteContact(contact.id)}>Delete</button>
+                      </div>
+                    </>
+                  )>
                 </li>
               ))}
             </ul>
