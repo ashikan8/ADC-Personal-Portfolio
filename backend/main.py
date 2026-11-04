@@ -15,21 +15,8 @@ class Contact(ContactSubmission):
     id: int
 
 
-# Temporary database with two example messages
-contacts = [
-    Contact(
-        id=1,
-        name="Alex",
-        email="alex@example.com",
-        message="Hi, I really like your portfolio!"
-    ),
-    Contact(
-        id=2,
-        name="Taylor",
-        email="taylor@example.com",
-        message="I would love to collaborate on a project."
-    )
-]
+# In-memory storage: starts empty (no mock contact data)
+contacts: list[Contact] = []
 
 
 # Endpoint 1: Get all contact messages
