@@ -291,7 +291,7 @@ function App() {
                         <button type="button" onClick={() => void deleteContact(contact.id)}>Delete</button>
                       </div>
                     </>
-                  )>
+                  )}
                 </li>
               ))}
             </ul>
