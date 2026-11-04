@@ -3,8 +3,78 @@ import './App.css';
 
 const GREETING = "Hi, I'm Ashika!";
 
+type Contact = {
+  id: number;
+  name: string;
+  email: string;
+  message: string;
+};
+
+type ContactInput = Omit<Contact, 'id'>;
+
 function App() {
   const [typedText, setTypedText] = useState('');
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [form, setForm] = useState<ContactInput>({ name: '', email: '', message: '' });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // GET: load messages from the FastAPI backend, not a hardcoded array.
+  useEffect(() => {
+    async function loadContacts() {
+      try {
+        const response = await fetch('/contacts');
+        if (!response.ok) throw new Error('Could not load messages.');
+        const data: Contact[] = await response.json();
+        setContacts(data);
+      } catch {
+        setError('Could not load messages. Make sure FastAPI is running.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    void loadContacts();
+  }, []);
+
+  // POST: submit the form to FastAPI.
+  async function submitContact(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch('/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) throw new Error('Could not send your message.');
+      const created: Contact = await response.json();
+      setContacts((previous) => [...previous, created]);
+      setForm({ name: '', email: '', message: '' });
+      setSuccess('Message submitted successfully!');
+    } catch {
+      setError('Could not send your message. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // DELETE: remove a message using its ID.
+  async function deleteContact(contactId: number) {
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch(`/contacts/${contactId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Could not delete the message.');
+      setContacts((previous) => previous.filter((contact) => contact.id !== contactId));
+      setSuccess('Message deleted.');
+    } catch {
+      setError('Could not delete the message. Please try again.');
+    }
+  }
 
   useEffect(() => {
     let index = 0;
@@ -138,15 +208,45 @@ function App() {
         </div>
       </section>
 
-      <section className="centered">
+      <section className="centered" id="contact">
         <h2>Contact Me</h2>
-        <p>
-          You can contact me via email at{' '}
-          <a href="mailto:nadendla.ashika@gmail.com">
-            nadendla.ashika@gmail.com
-          </a>
-          .
-        </p>
+        <p>Send me a message using the form below.</p>
+        <form className="contact-form" onSubmit={(event) => void submitContact(event)}>
+          <label htmlFor="contact-name">Name</label>
+          <input id="contact-name" value={form.name} required minLength={1}
+            onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          <label htmlFor="contact-email">Email</label>
+          <input id="contact-email" type="email" value={form.email} required
+            onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          <label htmlFor="contact-message">Message</label>
+          <textarea id="contact-message" value={form.message} required rows={4}
+            onChange={(event) => setForm({ ...form, message: event.target.value })} />
+          <button type="submit" disabled={submitting}>
+            {submitting ? 'Sending...' : 'Send Message'}
+          </button>
+        </form>
+        {error && <p role="alert" className="contact-error">{error}</p>}
+        {success && <p role="status" className="contact-success">{success}</p>}
+        <div className="contact-messages">
+          <h3>Contact Messages</h3>
+          {loading ? (
+            <p>Loading messages...</p>
+          ) : contacts.length === 0 ? (
+            <p>No messages yet.</p>
+          ) : (
+            <ul className="contact-list">
+              {contacts.map((contact) => (
+                <li key={contact.id} className="contact-item">
+                  <strong>{contact.name}</strong> <span>({contact.email})</span>
+                  <p>{contact.message}</p>
+                  <button type="button" onClick={() => void deleteContact(contact.id)}>
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
     </div>
   );
